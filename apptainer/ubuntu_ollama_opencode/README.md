@@ -68,11 +68,18 @@ The `%files` directive in `opencode-ollama.def` bundles `entrypoint.sh` into the
 
 This is the primary use case: launch OpenCode with Ollama running in the background.
 
+Set a persistent host-side home directory first:
+
+```bash
+export OPENCODE_HOME="$(pwd)/root-home"
+mkdir -p "$OPENCODE_HOME"
+```
+
 ### Basic
 
 ```bash
 apptainer run --nv \
-  --bind $(pwd)/root-home:/root \
+  --bind $OPENCODE_HOME:/root \
   --bind $(pwd):/workspace \
   opencode-ollama.sif
 ```
@@ -82,7 +89,7 @@ apptainer run --nv \
 ```bash
 OLLAMA_MODEL=qwen2.5-coder:32b \
 apptainer run --nv \
-  --bind $(pwd)/root-home:/root \
+  --bind $OPENCODE_HOME:/root \
   --bind $(pwd):/workspace \
   opencode-ollama.sif
 ```
@@ -96,7 +103,7 @@ apptainer run --nv \
 
 ```bash
 apptainer run --nv \
-  --bind $(pwd)/root-home:/root \
+  --bind $OPENCODE_HOME:/root \
   --bind $(pwd):/workspace \
   opencode-ollama.sif bash
 ```
@@ -105,7 +112,7 @@ apptainer run --nv \
 
 ```bash
 apptainer exec --nv \
-  --bind $(pwd)/root-home:/root \
+  --bind $OPENCODE_HOME:/root \
   --bind $(pwd):/workspace \
   opencode-ollama.sif opencode --help
 ```
@@ -120,7 +127,7 @@ Use `apptainer instance` when you want Ollama running persistently in the backgr
 
 ```bash
 apptainer instance start --nv \
-  --bind $(pwd)/root-home:/root \
+  --bind $OPENCODE_HOME:/root \
   --bind $(pwd):/workspace \
   opencode-ollama.sif ollama-svc
 ```
@@ -141,12 +148,6 @@ apptainer instance list
 
 ```bash
 apptainer exec instance://ollama-svc ollama pull qwen2.5-coder:32b
-```
-
-### Launch OpenCode against the running instance
-
-```bash
-apptainer exec --nv instance://ollama-svc opencode
 ```
 
 ### Query the Ollama API from the host
@@ -233,7 +234,7 @@ apptainer exec --nv instance://ollama-svc ollama run qwen2.5-coder:32b
 
 ```bash
 apptainer exec --nv \
-  --bind $(pwd)/root-home:/root \
+  --bind $OPENCODE_HOME:/root \
   --bind $(pwd):/workspace \
   opencode-ollama.sif ollama pull qwen2.5-coder:32b
 ```
@@ -268,7 +269,7 @@ export OLLAMA_NUM_PARALLEL=8
 export OLLAMA_KEEP_ALIVE=30m
 
 apptainer run --nv \
-  --bind $(pwd)/root-home:/root \
+  --bind $OPENCODE_HOME:/root \
   --bind $(pwd):/workspace \
   opencode-ollama.sif
 ```
@@ -300,7 +301,7 @@ Apptainer containers are read-only by default. All state must be stored on bind-
 | `$OPENCODE_HOME` (any dir) | `/root` | All container home data (`~/.ollama`, `~/.local/share/opencode`, `~/.config/opencode`) |
 | _(any project dir)_ | `/workspace` | Your source code |
 
-The example `root-home` directory on the host is mounted as `/root` inside the container, matching the `$HOME` variable set in the def file's `%environment` section.
+The host directory referenced by `$OPENCODE_HOME` is mounted as `/root` inside the container, matching the `$HOME` variable set in the def file's `%environment` section.
 
 Create the host directories before first run:
 
@@ -325,26 +326,9 @@ tar xzf opencode_home_backup.tar.gz -C "$OPENCODE_HOME"
 
 ## Logs & Debugging
 
-Logs are written to the host-side bind mount and survive container restarts.
-
-### Ollama logs
-
-```bash
-cat "$OPENCODE_HOME/supervisor/ollama.log"
-cat "$OPENCODE_HOME/supervisor/ollama_err.log"
-```
-
-### Supervisord log
-
-```bash
-cat "$OPENCODE_HOME/supervisor/supervisord.log"
-```
-
-### Follow logs live
-
-```bash
-tail -f "$OPENCODE_HOME/supervisor/ollama.log"
-```
+This image does not configure `supervisor` or file-based logs under `$OPENCODE_HOME`.
+For interactive runs, use the terminal output from `apptainer run`.
+For background instances, use health checks and an interactive shell inside the instance.
 
 ### Check GPU usage from the host
 
@@ -406,7 +390,7 @@ apptainer build --force opencode-ollama.sif opencode-ollama.def
 ```bash
 # Re-pulling fetches the latest version
 apptainer exec --nv \
-  --bind $(pwd)/root-home:/root \
+  --bind $OPENCODE_HOME:/root \
   --bind $(pwd):/workspace \
   opencode-ollama.sif ollama pull qwen2.5-coder:32b
 ```
