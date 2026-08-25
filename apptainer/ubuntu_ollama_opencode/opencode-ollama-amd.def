@@ -83,8 +83,6 @@ From: ubuntu:24.04
         | zstd -d \
         | tar -xf - -C /usr/local
 
-    ln -sf /usr/local/ollama /usr/local/bin/ollama
-
     # Make entrypoint executable
     chmod +x /opt/opencode/entrypoint.sh
 
