@@ -92,6 +92,7 @@ From: ubuntu:24.04
 
     # Related CLI tooling
     pipx install --global fprettify
+    pipx install --global fypp
     pipx install --global formal-ford2vitepress
     pipx install --global ford
 
