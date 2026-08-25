@@ -66,8 +66,22 @@ From: ubuntu:24.04
     # OpenCode
     npm install -g opencode-ai
 
-    # Ollama
-    curl -fsSL https://ollama.com/install.sh | sh
+    # Ollama base CLI plus the ROCm runtime payload. The generic install script
+    # only layers in ROCm when it can see an AMD GPU at install time, which is
+    # not true during an Apptainer build.
+    case "$(uname -m)" in
+        x86_64) OLLAMA_ARCH=amd64 ;;
+        aarch64|arm64) OLLAMA_ARCH=arm64 ;;
+        *) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;
+    esac
+
+    mkdir -p /usr/local/bin /usr/local/lib/ollama
+    curl -fsSL "https://ollama.com/download/ollama-linux-${OLLAMA_ARCH}.tgz" \
+        | tar -xzf - -C /usr/local
+    curl -fsSL "https://ollama.com/download/ollama-linux-${OLLAMA_ARCH}-rocm.tgz" \
+        | tar -xzf - -C /usr/local
+
+    ln -sf /usr/local/ollama /usr/local/bin/ollama
 
     # Make entrypoint executable
     chmod +x /opt/opencode/entrypoint.sh
