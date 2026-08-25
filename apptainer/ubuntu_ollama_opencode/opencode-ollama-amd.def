@@ -54,6 +54,12 @@ From: ubuntu:24.04
         python3-pip \
         pipx \
         python3-venv \
+        pandoc \
+        texlive-latex-base \
+        texlive-latex-extra \
+        texlive-fonts-recommended \
+        texlive-fonts-extra \
+        latexmk \
         && rm -rf /var/lib/apt/lists/*
 
     # Locale
@@ -95,6 +101,23 @@ From: ubuntu:24.04
     pipx install fypp
     pipx install formal-ford2vitepress
     pipx install ford
+
+    # Intel oneAPI user-space toolchain only. Avoid the full metapackage because
+    # it pulls in tools such as VTune that expect host kernel headers/modules.
+    # download the key to system keyring
+    curl -fsSL https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
+        | gpg --dearmor -o /usr/share/keyrings/oneapi-archive-keyring.gpg
+
+    # add signed entry to apt sources and configure the APT client to use Intel repository:
+    echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" | tee /etc/apt/sources.list.d/oneAPI.list
+
+    apt-get update && apt-get install -y --no-install-recommends \
+        intel-oneapi-compiler-dpcpp-cpp \
+        intel-oneapi-compiler-fortran \
+        intel-oneapi-mkl-devel \
+        intel-oneapi-openmp \
+        intel-oneapi-tbb-devel
+    rm -rf /var/lib/apt/lists/*
 
 # -----------------------------------------------------------------------------
 # %environment - variables available at runtime (every invocation)
