@@ -91,10 +91,10 @@ From: ubuntu:24.04
     mkdir -p /opt/opencode
 
     # Related CLI tooling
-    pipx install --global fprettify
-    pipx install --global fypp
-    pipx install --global formal-ford2vitepress
-    pipx install --global ford
+    pipx install fprettify
+    pipx install fypp
+    pipx install formal-ford2vitepress
+    pipx install ford
 
 # -----------------------------------------------------------------------------
 # %environment - variables available at runtime (every invocation)
@@ -104,13 +104,13 @@ From: ubuntu:24.04
     export LANGUAGE=en_US:en
     export LC_ALL=en_US.UTF-8
     export HOME=/root
+    export PATH=/root/.local/bin:$PATH
     export OLLAMA_MODELS=/root/.ollama/models
     # Server listens only on localhost; clients connect to 127.0.0.1
     export OLLAMA_HOST=127.0.0.1:11434
     export OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL:-4}
     export OLLAMA_MAX_LOADED_MODELS=${OLLAMA_MAX_LOADED_MODELS:-2}
     export OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE:-5m}
-
 # -----------------------------------------------------------------------------
 # %runscript - executed by `apptainer run` (interactive TUI use case)
 # -----------------------------------------------------------------------------
