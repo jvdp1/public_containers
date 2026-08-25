@@ -52,6 +52,7 @@ From: ubuntu:24.04
         pciutils \
         python3 \
         python3-pip \
+        pipx \
         python3-venv \
         && rm -rf /var/lib/apt/lists/*
 
@@ -88,6 +89,11 @@ From: ubuntu:24.04
 
     # Create a fixed directory for helper scripts
     mkdir -p /opt/opencode
+
+    # Related CLI tooling
+    pipx install --global fprettify
+    pipx install --global formal-ford2vitepress
+    pipx install --global ford
 
 # -----------------------------------------------------------------------------
 # %environment - variables available at runtime (every invocation)
