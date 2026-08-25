@@ -103,9 +103,6 @@ From: ubuntu:24.04
     export OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL:-4}
     export OLLAMA_MAX_LOADED_MODELS=${OLLAMA_MAX_LOADED_MODELS:-2}
     export OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE:-5m}
-    # AMD GPU selection can be limited at runtime if needed.
-    export HIP_VISIBLE_DEVICES=${HIP_VISIBLE_DEVICES:-all}
-    export ROCR_VISIBLE_DEVICES=${ROCR_VISIBLE_DEVICES:-all}
 
 # -----------------------------------------------------------------------------
 # %runscript - executed by `apptainer run` (interactive TUI use case)
@@ -175,8 +172,8 @@ From: ubuntu:24.04
       apptainer instance stop ollama-svc
 
     Typical host devices exposed by --rocm include /dev/kfd and /dev/dri.
-    If you need to limit visible GPUs, set HIP_VISIBLE_DEVICES or
-    ROCR_VISIBLE_DEVICES before running Apptainer.
+    Leave HIP_VISIBLE_DEVICES and ROCR_VISIBLE_DEVICES unset unless you want
+    to pin specific GPUs explicitly.
 
     Show this help:
       apptainer run-help opencode-ollama-amd.sif
