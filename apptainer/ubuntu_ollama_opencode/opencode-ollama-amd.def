@@ -2,22 +2,22 @@ Bootstrap: docker
 From: ubuntu:24.04
 
 # =============================================================================
-# Apptainer definition file - OpenCode + Ollama on Ubuntu 24.04 / NVIDIA A100
+# Apptainer definition file - OpenCode + Ollama on Ubuntu 24.04 / AMD GPU
 #
 # Build (requires root or fakeroot):
-#   apptainer build opencode-ollama.sif opencode-ollama.def
+#   apptainer build opencode-ollama-amd.sif opencode-ollama-amd.def
 #
 # Run interactive TUI (single-shot):
-#   apptainer run --nv \
+#   apptainer run --rocm \
 #     --bind $(pwd)/root-home:/root \
 #     --bind $(pwd):/workspace \
-#     opencode-ollama.sif
+#     opencode-ollama-amd.sif
 #
 # Run as a persistent background instance:
-#   apptainer instance start --nv \
+#   apptainer instance start --rocm \
 #     --bind $(pwd)/root-home:/root \
 #     --bind $(pwd):/workspace \
-#     opencode-ollama.sif ollama-svc
+#     opencode-ollama-amd.sif ollama-svc
 #
 #   apptainer exec instance://ollama-svc ollama launch opencode
 #
@@ -66,7 +66,7 @@ From: ubuntu:24.04
     # OpenCode
     npm install -g opencode-ai
 
-    # Ollama (bundles its own CUDA runtime)
+    # Ollama
     curl -fsSL https://ollama.com/install.sh | sh
 
     # Make entrypoint executable
@@ -83,14 +83,15 @@ From: ubuntu:24.04
     export LANGUAGE=en_US:en
     export LC_ALL=en_US.UTF-8
     export HOME=/root
-    export NVIDIA_VISIBLE_DEVICES=all
-    export NVIDIA_DRIVER_CAPABILITIES=compute,utility
     export OLLAMA_MODELS=/root/.ollama/models
     # Server listens only on localhost; clients connect to 127.0.0.1
     export OLLAMA_HOST=127.0.0.1:11434
     export OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL:-4}
     export OLLAMA_MAX_LOADED_MODELS=${OLLAMA_MAX_LOADED_MODELS:-2}
     export OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE:-5m}
+    # AMD GPU selection can be limited at runtime if needed.
+    export HIP_VISIBLE_DEVICES=${HIP_VISIBLE_DEVICES:-all}
+    export ROCR_VISIBLE_DEVICES=${ROCR_VISIBLE_DEVICES:-all}
 
 # -----------------------------------------------------------------------------
 # %runscript - executed by `apptainer run` (interactive TUI use case)
@@ -126,38 +127,42 @@ From: ubuntu:24.04
 # -----------------------------------------------------------------------------
 %labels
     org.opencontainers.image.title       "OpenCode + Ollama"
-    org.opencontainers.image.description "OpenCode TUI with local Ollama inference on NVIDIA A100"
+    org.opencontainers.image.description "OpenCode TUI with local Ollama inference on AMD GPUs via ROCm"
     org.opencontainers.image.base        "ubuntu:24.04"
 
 # -----------------------------------------------------------------------------
-# %help - shown by `apptainer run-help opencode-ollama.sif`
+# %help - shown by `apptainer run-help opencode-ollama-amd.sif`
 # -----------------------------------------------------------------------------
 %help
-    OpenCode + Ollama on Ubuntu 24.04 with NVIDIA GPU support.
+    OpenCode + Ollama on Ubuntu 24.04 with AMD GPU support via ROCm.
 
     Interactive TUI (most common):
-      apptainer run --nv \
+      apptainer run --rocm \
         --bind $(pwd)/root-home:/root \
         --bind $(pwd):/workspace \
-        opencode-ollama.sif
+        opencode-ollama-amd.sif
 
     Pull a model on first start:
-      OLLAMA_MODEL=mistral-medium-3.5 apptainer run --nv \
+      OLLAMA_MODEL=mistral-medium-3.5 apptainer run --rocm \
         --bind $(pwd)/root-home:/root \
         --bind $(pwd):/workspace \
-        opencode-ollama.sif
+        opencode-ollama-amd.sif
 
     Run as a background instance (Ollama daemon only):
       export OPENCODE_HOME=_my_path
 
-      apptainer instance start --nv \
+      apptainer instance start --rocm \
         --bind $OPENCODE_HOME:/root/ \
         --bind $(pwd):/workspace \
-        opencode-ollama.sif ollama-svc
+        opencode-ollama-amd.sif ollama-svc
 
       apptainer exec instance://ollama-svc ollama launch opencode
 
       apptainer instance stop ollama-svc
 
+    Typical host devices exposed by --rocm include /dev/kfd and /dev/dri.
+    If you need to limit visible GPUs, set HIP_VISIBLE_DEVICES or
+    ROCR_VISIBLE_DEVICES before running Apptainer.
+
     Show this help:
-      apptainer run-help opencode-ollama.sif
+      apptainer run-help opencode-ollama-amd.sif
