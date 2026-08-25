@@ -76,8 +76,9 @@ From: ubuntu:24.04
     esac
 
     mkdir -p /usr/local/bin /usr/local/lib/ollama
-    curl -fsSL "https://ollama.com/download/ollama-linux-${OLLAMA_ARCH}.tgz" \
-        | tar -xzf - -C /usr/local
+    curl -fsSL "https://ollama.com/download/ollama-linux-${OLLAMA_ARCH}.tar.zst" \
+        | zstd -d \
+        | tar -xf - -C /usr/local
     curl -fsSL "https://ollama.com/download/ollama-linux-${OLLAMA_ARCH}-rocm.tar.zst" \
         | zstd -d \
         | tar -xf - -C /usr/local
