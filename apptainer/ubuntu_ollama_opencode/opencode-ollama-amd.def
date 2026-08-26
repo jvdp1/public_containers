@@ -2,22 +2,22 @@ Bootstrap: docker
 From: ubuntu:24.04
 
 # =============================================================================
-# Apptainer definition file - OpenCode + Ollama on Ubuntu 24.04 / NVIDIA A100
+# Apptainer definition file - OpenCode + Ollama on Ubuntu 24.04 / AMD GPU
 #
 # Build (requires root or fakeroot):
-#   apptainer build opencode-ollama.sif opencode-ollama.def
+#   apptainer build opencode-ollama-amd.sif opencode-ollama-amd.def
 #
 # Run interactive TUI (single-shot):
-#   apptainer run --nv \
+#   apptainer run --rocm \
 #     --bind $(pwd)/root-home:/root \
 #     --bind $(pwd):/workspace \
-#     opencode-ollama.sif
+#     opencode-ollama-amd.sif
 #
 # Run as a persistent background instance:
-#   apptainer instance start --nv \
+#   apptainer instance start --rocm \
 #     --bind $(pwd)/root-home:/root \
 #     --bind $(pwd):/workspace \
-#     opencode-ollama.sif ollama-svc
+#     opencode-ollama-amd.sif ollama-svc
 #
 #   apptainer exec instance://ollama-svc ollama launch opencode
 #
@@ -52,7 +52,14 @@ From: ubuntu:24.04
         pciutils \
         python3 \
         python3-pip \
+        pipx \
         python3-venv \
+        pandoc \
+        texlive-latex-base \
+        texlive-latex-extra \
+        texlive-fonts-recommended \
+        texlive-fonts-extra \
+        latexmk \
         && rm -rf /var/lib/apt/lists/*
 
     # Locale
@@ -66,14 +73,51 @@ From: ubuntu:24.04
     # OpenCode
     npm install -g opencode-ai
 
-    # Ollama (bundles its own CUDA runtime)
-    curl -fsSL https://ollama.com/install.sh | sh
+    # Ollama base CLI plus the ROCm runtime payload. The generic install script
+    # only layers in ROCm when it can see an AMD GPU at install time, which is
+    # not true during an Apptainer build.
+    case "$(uname -m)" in
+        x86_64) OLLAMA_ARCH=amd64 ;;
+        aarch64|arm64) OLLAMA_ARCH=arm64 ;;
+        *) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;
+    esac
+
+    mkdir -p /usr/local/bin /usr/local/lib/ollama
+    curl -fsSL "https://ollama.com/download/ollama-linux-${OLLAMA_ARCH}.tar.zst" \
+        | zstd -d \
+        | tar -xf - -C /usr/local
+    curl -fsSL "https://ollama.com/download/ollama-linux-${OLLAMA_ARCH}-rocm.tar.zst" \
+        | zstd -d \
+        | tar -xf - -C /usr/local
 
     # Make entrypoint executable
     chmod +x /opt/opencode/entrypoint.sh
 
     # Create a fixed directory for helper scripts
     mkdir -p /opt/opencode
+
+    # Related CLI tooling
+    pipx install fprettify
+    pipx install fypp
+    pipx install formal-ford2vitepress
+    pipx install ford
+
+    # Intel oneAPI user-space toolchain only. Avoid the full metapackage because
+    # it pulls in tools such as VTune that expect host kernel headers/modules.
+    # download the key to system keyring
+    curl -fsSL https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
+        | gpg --dearmor -o /usr/share/keyrings/oneapi-archive-keyring.gpg
+
+    # add signed entry to apt sources and configure the APT client to use Intel repository:
+    echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" | tee /etc/apt/sources.list.d/oneAPI.list
+
+    apt-get update && apt-get install -y --no-install-recommends \
+        intel-oneapi-compiler-dpcpp-cpp \
+        intel-oneapi-compiler-fortran \
+        intel-oneapi-mkl-devel \
+        intel-oneapi-openmp \
+        intel-oneapi-tbb-devel
+    rm -rf /var/lib/apt/lists/*
 
 # -----------------------------------------------------------------------------
 # %environment - variables available at runtime (every invocation)
@@ -83,15 +127,13 @@ From: ubuntu:24.04
     export LANGUAGE=en_US:en
     export LC_ALL=en_US.UTF-8
     export HOME=/root
-    export NVIDIA_VISIBLE_DEVICES=all
-    export NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    export PATH=/root/.local/bin:$PATH
     export OLLAMA_MODELS=/root/.ollama/models
     # Server listens only on localhost; clients connect to 127.0.0.1
     export OLLAMA_HOST=127.0.0.1:11434
     export OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL:-4}
     export OLLAMA_MAX_LOADED_MODELS=${OLLAMA_MAX_LOADED_MODELS:-2}
     export OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE:-5m}
-
 # -----------------------------------------------------------------------------
 # %runscript - executed by `apptainer run` (interactive TUI use case)
 # -----------------------------------------------------------------------------
@@ -126,38 +168,42 @@ From: ubuntu:24.04
 # -----------------------------------------------------------------------------
 %labels
     org.opencontainers.image.title       "OpenCode + Ollama"
-    org.opencontainers.image.description "OpenCode TUI with local Ollama inference on NVIDIA A100"
+    org.opencontainers.image.description "OpenCode TUI with local Ollama inference on AMD GPUs via ROCm"
     org.opencontainers.image.base        "ubuntu:24.04"
 
 # -----------------------------------------------------------------------------
-# %help - shown by `apptainer run-help opencode-ollama.sif`
+# %help - shown by `apptainer run-help opencode-ollama-amd.sif`
 # -----------------------------------------------------------------------------
 %help
-    OpenCode + Ollama on Ubuntu 24.04 with NVIDIA GPU support.
+    OpenCode + Ollama on Ubuntu 24.04 with AMD GPU support via ROCm.
 
     Interactive TUI (most common):
-      apptainer run --nv \
+      apptainer run --rocm \
         --bind $(pwd)/root-home:/root \
         --bind $(pwd):/workspace \
-        opencode-ollama.sif
+        opencode-ollama-amd.sif
 
     Pull a model on first start:
-      OLLAMA_MODEL=mistral-medium-3.5 apptainer run --nv \
+      OLLAMA_MODEL=mistral-medium-3.5 apptainer run --rocm \
         --bind $(pwd)/root-home:/root \
         --bind $(pwd):/workspace \
-        opencode-ollama.sif
+        opencode-ollama-amd.sif
 
     Run as a background instance (Ollama daemon only):
       export OPENCODE_HOME=_my_path
 
-      apptainer instance start --nv \
+      apptainer instance start --rocm \
         --bind $OPENCODE_HOME:/root/ \
         --bind $(pwd):/workspace \
-        opencode-ollama.sif ollama-svc
+        opencode-ollama-amd.sif ollama-svc
 
       apptainer exec instance://ollama-svc ollama launch opencode
 
       apptainer instance stop ollama-svc
 
+    Typical host devices exposed by --rocm include /dev/kfd and /dev/dri.
+    Leave HIP_VISIBLE_DEVICES and ROCR_VISIBLE_DEVICES unset unless you want
+    to pin specific GPUs explicitly.
+
     Show this help:
-      apptainer run-help opencode-ollama.sif
+      apptainer run-help opencode-ollama-amd.sif
