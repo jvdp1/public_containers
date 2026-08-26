@@ -73,6 +73,12 @@ From: ubuntu:24.04
     # OpenCode
     npm install -g opencode-ai
 
+    # Hermes Agent CLI. Keep install non-interactive inside the image build and
+    # skip optional browser/computer-use setup to avoid unnecessary bulk.
+    pipx install uv
+    curl -fsSL https://hermes-agent.nousresearch.com/install.sh \
+        | bash -s -- --skip-setup --skip-browser --skip-computer-use
+
     # Ollama base CLI plus the ROCm runtime payload. The generic install script
     # only layers in ROCm when it can see an AMD GPU at install time, which is
     # not true during an Apptainer build.
@@ -182,6 +188,12 @@ From: ubuntu:24.04
         --bind $(pwd)/root-home:/root \
         --bind $(pwd):/workspace \
         opencode-ollama-amd.sif
+
+    Hermes Agent CLI:
+      apptainer exec --rocm \
+        --bind $(pwd)/root-home:/root \
+        --bind $(pwd):/workspace \
+        opencode-ollama-amd.sif hermes
 
     Pull a model on first start:
       OLLAMA_MODEL=mistral-medium-3.5 apptainer run --rocm \
