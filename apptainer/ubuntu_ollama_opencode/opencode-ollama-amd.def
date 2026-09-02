@@ -39,6 +39,10 @@ From: ubuntu:24.04
 
     # Base packages
     apt-get update && apt-get install -y --no-install-recommends \
+	build-essential \
+	gfortran \
+	make \
+	cmake \
         curl \
         wget \
         ca-certificates \
@@ -140,6 +144,7 @@ From: ubuntu:24.04
     export OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL:-4}
     export OLLAMA_MAX_LOADED_MODELS=${OLLAMA_MAX_LOADED_MODELS:-2}
     export OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE:-5m}
+
 # -----------------------------------------------------------------------------
 # %runscript - executed by `apptainer run` (interactive TUI use case)
 # -----------------------------------------------------------------------------
