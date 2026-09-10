@@ -77,8 +77,20 @@ From: ubuntu:24.04
     # OpenCode
     npm install -g opencode-ai
 
+    pipx install uv
+
     # Ollama (bundles its own CUDA runtime)
-    curl -fsSL https://ollama.com/install.sh | sh
+    case "$(uname -m)" in
+        x86_64) OLLAMA_ARCH=amd64 ;;
+        aarch64|arm64) OLLAMA_ARCH=arm64 ;;
+        *) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;
+    esac
+
+    mkdir -p /usr/local/bin /usr/local/lib/ollama
+    curl -fsSL "https://ollama.com/download/ollama-linux-${OLLAMA_ARCH}.tar.zst" \
+        | zstd -d \
+        | tar -xf - -C /usr/local
+
 
     # Make entrypoint executable
     chmod +x /opt/opencode/entrypoint.sh
@@ -125,9 +137,9 @@ From: ubuntu:24.04
     export OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL:-4}
     export OLLAMA_MAX_LOADED_MODELS=${OLLAMA_MAX_LOADED_MODELS:-2}
     export OLLAMA_KEEP_ALIVE=${OLLAMA_KEEP_ALIVE:-5m}
-    export OLLAMA_CONTEXT_LENGTH="${OLLAMA_CONTEXT_LENGTH:-32768}"
-    export OLLAMA_FLASH_ATTENTION="${OLLAMA_FLASH_ATTENTION:-1}"
-    export OLLAMA_KV_CACHE_TYPE="${OLLAMA_KV_CACHE_TYPE:-q8_0}"
+#    export OLLAMA_CONTEXT_LENGTH="${OLLAMA_CONTEXT_LENGTH:-32768}"
+#    export OLLAMA_FLASH_ATTENTION="${OLLAMA_FLASH_ATTENTION:-1}"
+#    export OLLAMA_KV_CACHE_TYPE="${OLLAMA_KV_CACHE_TYPE:-q8_0}"
 
 # -----------------------------------------------------------------------------
 # %runscript - executed by `apptainer run` (interactive TUI use case)
